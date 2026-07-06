@@ -1,0 +1,56 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# Lab outputs (generated at runtime)
+labs/annotated/
+labs/outputs/
+
+# Internal tooling (local build only — not part of the public package)
+scripts/
+tools/
+
+# Runtime caches & experiment tracking
+hf_cache/
+mlruns/
+wandb/
+
+# Model weights & checkpoints (downloaded during labs)
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+datasets/yolov8n.pt
+
+# Large datasets (auto-download on first lab run)
+datasets/mnist/
+datasets/coco128/
+datasets/oxford_pet/
+
+# LaTeX build workspace (PDFs in notes/ root are tracked)
+notes/_build/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+.cursor/
