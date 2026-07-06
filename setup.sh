@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# One-time Advanced AI environment setup (Linux / macOS)
+# Advanced AI course: one-time setup (Linux / macOS)
 set -euo pipefail
 cd "$(dirname "$0")"
 
-echo "=== Advanced AI - Environment Setup ==="
+echo "=== Advanced AI: Course Setup ==="
 python3 --version
 
 if [ ! -d .venv ]; then

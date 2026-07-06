@@ -1,8 +1,8 @@
 @echo off
-REM One-time Advanced AI environment setup (Windows)
+REM Advanced AI course: one-time setup (Windows)
 cd /d "%~dp0"
 
-echo === Advanced AI - Environment Setup ===
+echo === Advanced AI: Course Setup ===
 python --version || (echo Python 3.10+ required & exit /b 1)
 
 if not exist .venv (

@@ -1,4 +1,4 @@
-"""Portable runtime bootstrap for all lab notebooks (tracked in git)."""
+"""Runtime bootstrap for the Advanced AI course (notebooks and setup scripts)."""
 from __future__ import annotations
 
 import logging
