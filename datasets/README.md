@@ -18,4 +18,11 @@
 | COCO128 | 13 | Ultralytics on first `model.train()` |
 | YOLOv8n weights | 13 | Ultralytics on first `YOLO(...)` |
 
-Keep `env.ps1` loaded so Hugging Face and MLflow caches land in the project folder.
+Keep `env.ps1` / `env.sh` loaded so Hugging Face and MLflow caches land in the project folder.
+
+## Optional prefetch
+
+```bash
+python download_datasets.py          # bundled samples + MNIST + SST-2 + YOLO weights
+python download_datasets.py --minimal  # only CSV/JSONL + vision sample JPGs (setup runs this)
+```

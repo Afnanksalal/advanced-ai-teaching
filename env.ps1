@@ -11,40 +11,76 @@ param(
 $Root = $PSScriptRoot
 $VenvScripts = Join-Path $Root ".venv\Scripts"
 $Hadoop = Join-Path $Root "tools\hadoop"
+$LogDir = Join-Path $Root ".logs"
 $JupyterPort = 8888
-$MlflowPort = 5000
+$MlflowPort = 5050
 
 function Test-PortListening {
     param([int]$Port)
-    $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $Port)
     try {
-        $listener.Start()
-        $listener.Stop()
-        return $false
-    } catch {
+        $client = New-Object System.Net.Sockets.TcpClient
+        $client.Connect("127.0.0.1", $Port)
+        $client.Close()
         return $true
+    } catch {
+        return $false
     }
 }
 
-function Start-BackgroundProcess {
+function Wait-PortListening {
     param(
-        [string]$Name,
-        [string]$Exe,
-        [string[]]$ArgumentList,
         [int]$Port,
-        [string]$Url
+        [int]$TimeoutSec = 20
+    )
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    while ((Get-Date) -lt $deadline) {
+        if (Test-PortListening -Port $Port) { return $true }
+        Start-Sleep -Milliseconds 500
+    }
+    return $false
+}
+
+function Start-MlflowUi {
+    param(
+        [string]$BackendUri,
+        [int]$Port
     )
     if (Test-PortListening -Port $Port) {
-        Write-Host "  $Name already running: $Url"
-        return
+        Write-Host "  MLflow UI already running: http://127.0.0.1:$Port"
+        return $true
     }
+
+    New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
+    $logFile = Join-Path $LogDir "mlflow-ui.log"
+    if (Test-Path $logFile) { Remove-Item $logFile -Force }
+
+    $pythonExe = Join-Path $VenvScripts "python.exe"
+    $args = @(
+        "-m", "mlflow", "ui",
+        "--backend-store-uri", $BackendUri,
+        "--host", "127.0.0.1",
+        "--port", "$Port"
+    )
+
     Start-Process `
-        -FilePath $Exe `
-        -ArgumentList $ArgumentList `
+        -FilePath $pythonExe `
+        -ArgumentList $args `
         -WorkingDirectory $Root `
-        -WindowStyle Minimized | Out-Null
-    Start-Sleep -Seconds 2
-    Write-Host "  $Name started: $Url"
+        -WindowStyle Minimized `
+        -RedirectStandardOutput $logFile `
+        -RedirectStandardError $logFile | Out-Null
+
+    if (Wait-PortListening -Port $Port) {
+        Write-Host "  MLflow UI ready: http://127.0.0.1:$Port"
+        return $true
+    }
+
+    Write-Host "  MLflow UI failed to start on port $Port."
+    if (Test-Path $logFile) {
+        Write-Host "  Last log lines:"
+        Get-Content $logFile -Tail 8 | ForEach-Object { Write-Host "    $_" }
+    }
+    return $false
 }
 
 if (-not (Test-Path (Join-Path $VenvScripts "python.exe"))) {
@@ -64,11 +100,18 @@ $env:HF_DATASETS_CACHE = Join-Path $env:HF_HOME "datasets"
 $env:HF_HUB_DISABLE_SYMLINKS_WARNING = "1"
 $env:HF_HUB_VERBOSITY = "error"
 $env:TOKENIZERS_PARALLELISM = "false"
-$env:MLFLOW_TRACKING_URI = Join-Path $Root "mlruns"
+$env:PYTHONWARNINGS = "ignore::UserWarning,ignore::FutureWarning"
 $env:PYSPARK_PYTHON = Join-Path $Root ".venv\Scripts\python.exe"
 $env:PYSPARK_DRIVER_PYTHON = $env:PYSPARK_PYTHON
 $env:SPARK_LOCAL_IP = "127.0.0.1"
-$env:PYTHONWARNINGS = "ignore::UserWarning,ignore::FutureWarning"
+
+# MLflow 3.x: filesystem ./mlruns store is blocked unless opted in. Use SQLite instead.
+$MlrunsDir = Join-Path $Root "mlruns"
+New-Item -ItemType Directory -Force -Path $MlrunsDir | Out-Null
+$MlflowDb = Join-Path $MlrunsDir "mlflow.db"
+$DbUri = "sqlite:///$($MlflowDb.Replace('\', '/'))"
+$env:MLFLOW_TRACKING_URI = $DbUri
+$env:MLFLOW_UI_PORT = "$MlflowPort"
 
 $Jdk17 = "C:\Program Files\Microsoft\jdk-17.0.19.10-hotspot"
 if (Test-Path $Jdk17) {
@@ -95,23 +138,7 @@ if ($EnvOnly) {
 
 Write-Host ""
 Write-Host "Starting services..."
-
-$mlflowExe = Join-Path $VenvScripts "mlflow.exe"
-if (Test-Path $mlflowExe) {
-    Start-BackgroundProcess `
-        -Name "MLflow UI" `
-        -Exe $mlflowExe `
-        -ArgumentList @(
-            "ui",
-            "--backend-store-uri", $env:MLFLOW_TRACKING_URI,
-            "--host", "127.0.0.1",
-            "--port", "$MlflowPort"
-        ) `
-        -Port $MlflowPort `
-        -Url "http://127.0.0.1:$MlflowPort"
-} else {
-    Write-Host "  MLflow not installed; skipping UI."
-}
+Start-MlflowUi -BackendUri $env:MLFLOW_TRACKING_URI -Port $MlflowPort | Out-Null
 
 $jupyterExe = Join-Path $VenvScripts "jupyter.exe"
 if (-not (Test-Path $jupyterExe)) {
@@ -127,8 +154,9 @@ if (Test-PortListening -Port $JupyterPort) {
 
 Write-Host ""
 Write-Host "Jupyter Lab: http://127.0.0.1:$JupyterPort/lab"
+Write-Host "MLflow UI:   http://127.0.0.1:$MlflowPort"
 Write-Host "Kernel: Python 3.11 (labs)  |  Notebooks: labs/"
-Write-Host "Press Ctrl+C to stop Jupyter (MLflow keeps its own window)."
+Write-Host "Press Ctrl+C to stop Jupyter (MLflow keeps running in its own window)."
 Write-Host ""
 
 Set-Location $Root

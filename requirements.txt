@@ -1,4 +1,4 @@
-# Python 3.10+ lab dependencies
+# Python 3.10+ dependencies for Advanced AI teaching materials
 # Install PyTorch separately for your CUDA version: https://pytorch.org/get-started/locally/
 
 torch>=2.1.0

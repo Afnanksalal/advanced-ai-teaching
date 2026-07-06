@@ -21,6 +21,8 @@ build/
 # Lab outputs (generated at runtime)
 labs/annotated/
 labs/outputs/
+models/
+runs/
 
 # Internal tooling (local build only — not part of the public package)
 scripts/
@@ -29,6 +31,8 @@ tools/
 # Runtime caches & experiment tracking
 hf_cache/
 mlruns/
+mlruns/*.db
+.logs/
 wandb/
 
 # Model weights & checkpoints (downloaded during labs)
